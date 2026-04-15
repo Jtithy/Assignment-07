@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 const statusLabelClass = {
   overdue: "status-pill status-overdue",
   "almost due": "status-pill status-almost-due",
@@ -18,7 +20,7 @@ function formatStatus(status) {
 
 function FriendCard({ friend }) {
   return (
-    <article className="friend-card">
+    <Link to={`/friends/${friend.id}`} className="friend-card friend-card-link">
       <img src={friend.picture} alt={friend.name} className="friend-avatar" />
       <h3>{friend.name}</h3>
       <p className="friend-days">{friend.days_since_contact}d ago</p>
@@ -32,7 +34,7 @@ function FriendCard({ friend }) {
 
         <span className={statusLabelClass[friend.status]}>{formatStatus(friend.status)}</span>
       </div>
-    </article>
+    </Link>
   );
 }
 
