@@ -2,11 +2,17 @@ import FriendCard from "../components/FriendCard";
 import { useAppContext } from "../context/AppContext";
 
 function DashboardPage() {
-  const { friends, summary } = useAppContext();
-  const displayFriends = [...friends];
+  const { friends, summary, isFriendsLoading } = useAppContext();
 
-  while (displayFriends.length < 12) {
-    displayFriends.push(friends[displayFriends.length % friends.length]);
+  if (isFriendsLoading) {
+    return (
+      <section className="dashboard-wrap">
+        <div className="friends-loader" role="status" aria-live="polite">
+          <span className="friends-spinner" aria-hidden="true" />
+          <p>Loading your friends...</p>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -48,8 +54,8 @@ function DashboardPage() {
       </div>
 
       <div className="friends-grid">
-        {displayFriends.slice(0, 12).map((friend, idx) => (
-          <FriendCard key={`${friend.id}-${idx}`} friend={friend} />
+        {friends.map((friend) => (
+          <FriendCard key={friend.id} friend={friend} />
         ))}
       </div>
     </section>

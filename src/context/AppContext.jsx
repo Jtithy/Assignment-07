@@ -1,31 +1,66 @@
-import { createContext, useContext, useMemo, useState } from "react";
-import friends from "../data/friends.json";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const AppContext = createContext(null);
 
 const TIMELINE_STORAGE_KEY = "keenkeeper.timeline";
 
-const seedTimeline = [
-  { id: "t1", type: "call", friendName: "David Kim", createdAt: "2026-04-03T09:30:00Z" },
-  { id: "t2", type: "text", friendName: "Emma Wilson", createdAt: "2026-04-08T15:20:00Z" },
-  { id: "t3", type: "video", friendName: "Lisa Nakamura", createdAt: "2026-04-11T19:10:00Z" },
-];
+function sortByNewest(a, b) {
+  return new Date(b.createdAt) - new Date(a.createdAt);
+}
+
+function isLegacySeedEntry(entry) {
+  return typeof entry?.id === "string" && /^t\d+$/.test(entry.id);
+}
 
 function getStoredTimeline() {
   const raw = localStorage.getItem(TIMELINE_STORAGE_KEY);
-  if (!raw) return seedTimeline;
+  if (!raw) return [];
 
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : seedTimeline;
+    if (!Array.isArray(parsed)) return [];
+
+    // Remove old seeded data so timeline only reflects user actions.
+    return parsed.filter((entry) => !isLegacySeedEntry(entry)).sort(sortByNewest);
   } catch {
-    return seedTimeline;
+    return [];
   }
 }
 
 export function AppProvider({ children }) {
+  const [friends, setFriends] = useState([]);
+  const [isFriendsLoading, setIsFriendsLoading] = useState(true);
   const [timeline, setTimeline] = useState(getStoredTimeline);
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    let isActive = true;
+    let timerId;
+
+    async function loadFriends() {
+      try {
+        const module = await import("../data/friends.json");
+        const loadedFriends = module.default ?? [];
+
+        timerId = setTimeout(() => {
+          if (!isActive) return;
+          setFriends(loadedFriends);
+          setIsFriendsLoading(false);
+        }, 550);
+      } catch {
+        if (!isActive) return;
+        setFriends([]);
+        setIsFriendsLoading(false);
+      }
+    }
+
+    loadFriends();
+
+    return () => {
+      isActive = false;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, []);
 
   const pushToast = (message) => {
     const id = crypto.randomUUID();
@@ -73,7 +108,7 @@ export function AppProvider({ children }) {
       needAttention: overdue + almostDue,
       interactionsThisMonth,
     };
-  }, [timeline]);
+  }, [friends, timeline]);
 
   const chartData = useMemo(() => {
     const count = { call: 0, text: 0, video: 0 };
@@ -93,6 +128,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         friends,
+        isFriendsLoading,
         timeline,
         toasts,
         summary,
